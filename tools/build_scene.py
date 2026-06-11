@@ -783,6 +783,32 @@ def parcel_workshop(b, x, y, rnd):
     chimney(b, x + w / 4, y + d / 4, h + 2.0, r=0.25)
 
 
+def parcel_garden(b, x, y, rnd, lot=11.0):
+    # lotto a giardino: prato, alberi misti, cespugli, vialetto
+    b.box(x, y, 0.34, lot * 0.85, lot * 0.85, 0.06)        # prato rialzato
+    b.box(x, y - lot * 0.32, 0.37, 1.1, lot * 0.36, 0.05)  # vialetto
+    for i in range(rnd.randint(4, 6)):
+        tree(b, x + rnd.uniform(-lot * 0.36, lot * 0.36), y + rnd.uniform(-lot * 0.36, lot * 0.36),
+             scale=rnd.uniform(0.55, 1.0), lollipop=rnd.random() < 0.5)
+    for i in range(rnd.randint(3, 5)):
+        bush(b, x + rnd.uniform(-lot * 0.4, lot * 0.4), y + rnd.uniform(-lot * 0.4, lot * 0.4),
+             r=rnd.uniform(0.5, 0.9))
+    hedge(b, x - lot * 0.42, y, lot * 0.7, rot=math.pi / 2, h=0.7)
+
+
+def parcel_greens(b, lx, ly, rnd, lot=11.0):
+    # verde di riempimento dove l'edificio non occupa tutto il lotto:
+    # alberi e cespugli lungo i bordi, fuori dall'impronta centrale
+    for i in range(rnd.randint(2, 3)):
+        ang = rnd.uniform(0, 2 * math.pi)
+        rad = rnd.uniform(lot * 0.40, lot * 0.48)
+        gx, gy = lx + rad * math.cos(ang), ly + rad * math.sin(ang)
+        if rnd.random() < 0.55:
+            bush(b, gx, gy, r=rnd.uniform(0.45, 0.8))
+        else:
+            tree(b, gx, gy, scale=rnd.uniform(0.45, 0.7), lollipop=rnd.random() < 0.5)
+
+
 def block_parcels(b, cx, cy, seed, half=13.0):
     # isolato diviso in 4 lotti privati con separatori (muretti)
     rnd = random.Random(seed)
@@ -796,12 +822,21 @@ def block_parcels(b, cx, cy, seed, half=13.0):
             lx = cx + sx * half / 2
             ly = cy + sy * half / 2
             r = rnd.random()
-            if r < 0.45:
+            if r < 0.4:
                 parcel_house(b, lx, ly, rnd, lot=lot)
-            elif r < 0.8:
+            elif r < 0.7:
                 parcel_tower(b, lx, ly, rnd)
-            else:
+            elif r < 0.85:
                 parcel_workshop(b, lx, ly, rnd)
+            else:
+                parcel_garden(b, lx, ly, rnd, lot=lot)
+            parcel_greens(b, lx, ly, rnd, lot=lot)
+    # angoli dell'isolato: alberi dove i lotti non arrivano
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            if rnd.random() < 0.5:
+                tree(b, cx + sx * (half - 1.6), cy + sy * (half - 1.6),
+                     scale=rnd.uniform(0.5, 0.8), lollipop=rnd.random() < 0.5)
 
 
 # ---------------------------------------------------------------- city v1
