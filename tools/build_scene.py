@@ -193,6 +193,43 @@ def truck(b, x, y, rot=0.0):
             b.box(px, py, 0.38, 0.7, 0.25, 0.76, rot)
 
 
+def car(b, x, y, rot=0.0):
+    c, s = math.cos(rot), math.sin(rot)
+    def at(lx, ly):
+        return x + lx * c - ly * s, y + lx * s + ly * c
+    b.box(x, y, 0.72, 4.2, 1.8, 1.0, rot)            # corpo
+    px, py = at(-0.3, 0)
+    b.box(px, py, 1.55, 2.2, 1.65, 0.75, rot)        # abitacolo
+    for lx in (-1.35, 1.35):
+        for ly in (-0.85, 0.85):
+            px, py = at(lx, ly)
+            b.box(px, py, 0.3, 0.62, 0.2, 0.6, rot)
+
+
+def pallet_stack(b, x, y, rot=0.0, n=3):
+    for i in range(n):
+        b.box(x, y, 0.12 + i * 0.16, 1.5, 1.2, 0.12, rot)
+    b.box(x, y, 0.12 + n * 0.16 + 0.25, 1.3, 1.0, 0.5, rot)  # carico
+
+
+def dumpster(b, x, y, rot=0.0):
+    b.box(x, y, 0.7, 1.9, 1.1, 1.2, rot)
+    b.prism(x, y, 1.3, 1.9, 1.1, 0.3, rot)
+
+
+def roller_shutter(b, x, y, z0, w, h, rot=0.0):
+    # saracinesca: doghe orizzontali impilate
+    c, s = math.cos(rot), math.sin(rot)
+    n = max(3, int(h / 0.38))
+    for i in range(n):
+        z = z0 + h * (i + 0.5) / n
+        b.box(x, y, z, w, 0.08, h / n * 0.78, rot)
+    # guide laterali
+    for o in (-w / 2 - 0.12, w / 2 + 0.12):
+        b.box(x + o * c, y + o * s, z0 + h / 2, 0.18, 0.16, h, rot)
+    b.box(x, y, z0 + h + 0.18, w + 0.6, 0.3, 0.35, rot)  # cassonetto
+
+
 def water_tank(b, x, y, z):
     for ang in range(4):
         a = math.pi / 4 + ang * math.pi / 2
@@ -360,26 +397,18 @@ def fence(b, x, y, length, rot=0.0, h=2.2):
 
 
 # ---------------------------------------------------------------- Fratelli HQ
-def build_fratelli():
-    b = Builder()
-    if VERSION == 1:
-        plaza_w, plaza_d = 34, 26
-    else:
-        plaza_w, plaza_d = 56, 44
-    front = -plaza_d / 2  # bordo plaza lato strada
+def build_hq_v1(b):
+    # palazzo originale (mockup) — invariato
+    b.box(0, 0, 0.15, 34, 26, 0.3)
+    b.box(0, -14.2, 0.08, 12, 3.0, 0.16)
+    for i in range(4):
+        b.box(0, -12.6 + i * 0.55, 0.34 + i * 0.14, 10 - i * 0.8, 0.7, 0.14)
 
-    b.box(0, 0, 0.15, plaza_w, plaza_d, 0.3)
-    b.box(0, front - 1.2, 0.08, 12, 3.0, 0.16)            # rampa marciapiede
-    for i in range(4):                                     # gradinata ingresso
-        b.box(0, front + 0.4 + i * 0.55, 0.34 + i * 0.14, 10 - i * 0.8, 0.7, 0.14)
-
-    # ala destra: 3 piani con griglia finestre
     b.box(9.5, 2.0, 0.3 + 4.5, 13, 11, 9)
     windows_grid(b, 9.5, 2.0 - 5.5, 5.6, 1.05, 1.5, 5, 2, axis='y', gap_x=0.85, gap_z=1.6)
     windows_grid(b, 9.5 + 6.5, 2.0, 5.6, 1.05, 1.5, 4, 2, axis='x', gap_x=0.9, gap_z=1.6)
     b.box(9.5, 2.0, 9.55, 13.5, 11.5, 0.5)
 
-    # torre centrale con doghe
     b.box(-1.5, 0.5, 0.3 + 6.0, 11, 9, 12)
     slat_facade(b, -1.5, 0.5 - 4.62, 2.6, 12.0, 10.2, axis='y')
     slat_facade(b, -1.5 - 5.62, 0.5, 2.6, 12.0, 8.2, axis='x')
@@ -387,59 +416,117 @@ def build_fratelli():
     b.box(-1.5, 0.5 - 4.0, 1.55, 9.5, 1.6, 2.5)
     windows_grid(b, -1.5, 0.5 - 4.85, 1.55, 1.3, 1.9, 4, 1, axis='y', gap_x=0.6)
 
-    # ala sinistra bassa con doghe fitte
     b.box(-11.5, 1.5, 0.3 + 3.0, 9, 10, 6)
     slat_facade(b, -11.5, 1.5 - 5.12, 0.4, 6.0, 8.2, axis='y', fin=0.05, depth=0.12)
     slat_facade(b, -11.5 - 4.62, 1.5, 0.4, 6.0, 9.2, axis='x', fin=0.05, depth=0.12)
     b.box(-11.5, 1.5, 6.5, 9.5, 10.5, 0.4)
 
-    # volumi tecnici tetto
     b.box(-3.0, 1.5, 13.6, 6.5, 5.5, 2.2)
     b.box(-3.0, 1.5, 14.9, 7.0, 6.0, 0.4)
     b.box(7.0, 4.0, 10.7, 4.5, 4.0, 1.8)
     ac_units(b, 11.5, 5.5, 9.8, n=2)
     water_tank(b, -13.0, 4.0, 6.7)
+    for x, y in ((-15.5, -10.5), (15.5, -10.5), (-16.0, 8.0), (16.0, 9.5), (4.5, -11.5)):
+        tree(b, x, y, scale=1.0, lollipop=True)
+    # logo sul fronte torre
+    return (-1.5, 0.5 - 4.62 - 0.16, 7.6, 4.4)
 
+
+def build_hq_v2(b):
+    # fabbrica reale (rif. Street View Glory Wheel, Taichung):
+    # uffici bianchi + volume nero a sbalzo con logo, capannoni, piazzale
+    plaza_w, plaza_d = 56, 44
+    hw, hd = plaza_w / 2, plaza_d / 2
+    b.box(0, 0, 0.15, plaza_w, plaza_d, 0.3)
+    b.box(0, -hd - 1.2, 0.08, 14, 3.0, 0.16)  # raccordo strada
+
+    # ---- blocco uffici (destra): 2 piani bianchi
+    b.box(7.0, 3.0, 0.3 + 3.5, 18, 13, 7)
+    # nastro finestre primo piano
+    windows_grid(b, 7.0, 3.0 - 6.55, 5.0, 1.5, 1.4, 6, 1, axis='y', gap_x=0.55)
+    windows_grid(b, 7.0 + 9.05, 3.0, 5.0, 1.4, 1.4, 4, 1, axis='x', gap_x=0.7)
+    b.box(7.0, 3.0, 7.55, 18.5, 13.5, 0.5)  # cornicione
+    # ingresso vetrato piano terra
+    windows_grid(b, 7.0, 3.0 - 6.6, 1.7, 1.6, 2.6, 4, 1, axis='y', gap_x=0.35)
+    b.box(7.0, -4.6, 3.45, 8.5, 2.6, 0.25)  # pensilina ingresso
+
+    # ---- volume nero "GW" a sbalzo sopra l'ingresso (doghe fitte = scuro)
+    b.box(7.0, -4.6, 6.6, 15, 3.2, 4.4)
+    slat_facade(b, 7.0, -4.6 - 1.68, 4.5, 8.7, 14.6, axis='y', n=44, fin=0.07, depth=0.16)
+    slat_facade(b, 7.0 - 7.58, -4.6, 4.5, 8.7, 2.9, axis='x', n=9, fin=0.07, depth=0.16)
+    slat_facade(b, 7.0 + 7.58, -4.6, 4.5, 8.7, 2.9, axis='x', n=9, fin=0.07, depth=0.16)
+    b.box(7.0, -4.6, 8.9, 15.5, 3.7, 0.45)  # coronamento
+
+    # ---- volume tecnico sul tetto uffici + serbatoi
+    b.box(11.0, 6.5, 7.55 + 1.5, 8, 6, 3.0)
+    b.box(11.0, 6.5, 10.7, 8.5, 6.5, 0.35)
+    water_tank(b, 2.5, 7.5, 7.8)
+    ac_units(b, 4.5, 3.0, 7.8, n=3)
+
+    # ---- capannone sinistro con saracinesca e pensilina inclinata
+    b.box(-12.0, 3.0, 0.3 + 3.0, 17, 15, 6)
+    b.gable(-12.0, 3.0, 6.3, 17.5, 15.8, 1.7)
+    roller_shutter(b, -13.5, 3.0 - 7.56, 0.45, 5.6, 3.4)
+    b.prism(-13.5, -5.9, 4.6, 7.6, 2.4, 1.0, rot=math.pi)  # pensilina inclinata
+    # finestre alte capannone
+    windows_grid(b, -12.0, 3.0 - 7.55, 4.9, 1.6, 0.9, 5, 1, axis='y', gap_x=0.6)
+    # pluviali
+    for xx in (-20.3, -3.8):
+        b.tube((xx, -4.4, 0.4), (xx, -4.4, 6.2), r=0.07)
+    water_tank(b, -17.0, 8.0, 7.2)
+    chimney(b, -7.0, 9.5, 9.5, r=0.45)
+
+    # ---- capannone lungo sul retro a dente di sega
+    b.box(0.0, 15.5, 0.3 + 2.75, 36, 9, 5.5)
+    for i in range(5):
+        b.prism(-14.4 + i * 7.2, 15.5, 5.75, 7.2, 9, 1.8)
+    b.tube((14.0, 15.5, 5.8), (14.0, 15.5, 9.0), r=0.3)
+
+    # ---- piazzale: stalli, auto, scooter, pallet, cassonetto
+    for i in range(5):  # stalli parcheggio davanti agli uffici
+        b.box(9.0 + i * 3.1, -12.5, 0.33, 0.14, 6.0, 0.04)
+    car(b, 10.5, -12.0, rot=math.pi / 2)
+    car(b, 13.6, -12.3, rot=math.pi / 2)
+    truck(b, 19.5, -11.5, rot=math.pi / 2)
+    for i in range(7):  # fila scooter a sinistra
+        scooter(b, -24.5, -9.0 + i * 1.5, rot=0.1 * (i % 3 - 1))
+    pallet_stack(b, -8.5, -8.5, rot=0.3)
+    pallet_stack(b, -6.5, -9.3, rot=-0.2, n=2)
+    dumpster(b, -3.5, -9.0, rot=0.15)
+
+    # ---- ingresso: pilastri cancello, siepi in fioriera, alberi
+    for sx in (-1, 1):
+        b.box(sx * 8.0, -hd + 0.6, 1.0, 1.4, 1.4, 2.0)   # pilastri
+        b.box(sx * 16.0, -hd + 0.9, 0.6, 14, 0.5, 1.2)   # muretto
+    hedge(b, 4.0, -hd + 2.4, 7, rot=0)
+    hedge(b, -4.5, -hd + 2.4, 6, rot=0)
+    for x in (-2.0, 2.0):
+        planter(b, x, -7.2)
+    # verde perimetrale
+    for x in (-24, -17, 17, 24):
+        tree(b, x, hd - 3.0, scale=1.0, lollipop=False)
+    for y in (-2, 6, 14):
+        tree(b, hw - 3.0, y, scale=0.9, lollipop=False)
+    tree(b, -hw + 3.0, -4, scale=1.1, lollipop=False)
+    # logo sul volume nero
+    return (7.0, -4.6 - 1.68 - 0.18, 5.2, 3.2)
+
+
+def build_fratelli():
+    b = Builder()
     if VERSION == 1:
-        for x, y in ((-15.5, -10.5), (15.5, -10.5), (-16.0, 8.0), (16.0, 9.5), (4.5, -11.5)):
-            tree(b, x, y, scale=1.0, lollipop=True)
+        logo_x, logo_y, logo_z, logo_s = build_hq_v1(b)
     else:
-        hw, hd = plaza_w / 2, plaza_d / 2
-        # siepi perimetrali con varchi (fronte e retro)
-        for sx in (-1, 1):
-            hedge(b, sx * (hw - 1.2), 0, plaza_d - 4, rot=math.pi / 2)
-            hedge(b, sx * hw / 2 + sx * 3, -hd + 1.2, hw - 12, rot=0)
-            hedge(b, sx * hw / 2 + sx * 3, hd - 1.2, hw - 12, rot=0)
-        # filari alberi
-        for x in (-22, -14, 14, 22):
-            tree(b, x, -hd + 4.5, scale=1.0, lollipop=True)
-            tree(b, x, hd - 4.5, scale=1.0, lollipop=True)
-        for y in (-8, 2, 12):
-            tree(b, -hw + 4.5, y, scale=0.9, lollipop=True)
-            tree(b, hw - 4.5, y, scale=0.9, lollipop=True)
-        # vasi vicino all'ingresso
-        for x in (-6.5, 6.5):
-            planter(b, x, -hd + 5.5)
-        # pali bandiera
-        for x in (-11, -8.5, -6):
-            flagpole(b, x, -hd + 7.5)
-        # parcheggio laterale destro con furgoni
-        b.box(20, 10, 0.32, 13, 17, 0.05)
-        for i, yy in enumerate((3.5, 9.0, 14.5)):
-            truck(b, 20.5, yy, rot=0.0 if i % 2 == 0 else math.pi)
-        # rastrelliera scooter vicino ingresso
-        for i in range(5):
-            scooter(b, 10 + i * 1.4, -hd + 4.0, rot=math.pi / 2)
+        logo_x, logo_y, logo_z, logo_s = build_hq_v2(b)
 
     ob = b.to_object("Fratelli_HQ")
 
     # logo plane con UV
     lb = bpy.data.meshes.new("Logo")
-    s_w, s_h = 4.4, 4.4
-    yf = 0.5 - 4.62 - 0.16
+    s_w = s_h = logo_s
     lb.from_pydata(
-        [(-1.5 - s_w / 2, yf, 7.6), (-1.5 + s_w / 2, yf, 7.6),
-         (-1.5 + s_w / 2, yf, 7.6 + s_h), (-1.5 - s_w / 2, yf, 7.6 + s_h)],
+        [(logo_x - s_w / 2, logo_y, logo_z), (logo_x + s_w / 2, logo_y, logo_z),
+         (logo_x + s_w / 2, logo_y, logo_z + s_h), (logo_x - s_w / 2, logo_y, logo_z + s_h)],
         [], [(0, 1, 2, 3)])
     uv = lb.uv_layers.new(name="UVMap")
     for li, co in zip(lb.loops, [(0, 0), (1, 0), (1, 1), (0, 1)]):
@@ -513,7 +600,7 @@ def asian_tower(b, x, y, w, d, h, rnd, dense=True):
 def block_towers(b, cx, cy, seed, half=14.8):
     rnd = random.Random(seed)
     dense = VERSION == 2
-    n = rnd.randint(3, 5) if dense else rnd.randint(2, 4)
+    n = rnd.randint(4, 6) if dense else rnd.randint(2, 4)
     placed = []
     for i in range(n):
         w = rnd.uniform(5.5, 8.5)
@@ -645,17 +732,31 @@ def build_city_v2():
                 block_towers(b, cx, cy, seed=seed, half=half)
             else:
                 block_lowrise(b, cx, cy, seed=seed, half=half)
-    # bancarelle e scooter lungo la via principale davanti alla plaza
+    # vie vive: bancarelle, scooter e verde su tutte le strade principali
     srnd = random.Random(11)
-    for x in (-40, -34, 36, 42):
+    for x in (-40, -34, 36, 42, -72, 68):
         stall(b, x, -27.5, rot=0)
+    for x in (-50, -44, 50, 58):
+        stall(b, x, 33.3, rot=math.pi)
+    for y in (-50, -44, 44, 56):
+        stall(b, -27.4, y, rot=math.pi / 2)
     for i in range(8):
         scooter(b, -18 + i * 2.0, -26.8, rot=math.pi / 2 + srnd.uniform(-0.15, 0.15))
     for i in range(6):
         scooter(b, 24 + i * 2.0, -33.2, rot=-math.pi / 2 + srnd.uniform(-0.15, 0.15))
-    # vasi verdi lungo la via
+    for i in range(7):
+        scooter(b, -60 + i * 2.0, 26.9, rot=math.pi / 2 + srnd.uniform(-0.15, 0.15))
+    for i in range(5):
+        scooter(b, 33.2, -14 + i * 2.0, rot=srnd.uniform(-0.15, 0.15))
+    for i in range(5):
+        scooter(b, -33.2, 40 + i * 2.0, rot=math.pi + srnd.uniform(-0.15, 0.15))
+    # vasi verdi lungo le vie
     for x in (-52, -48, 48, 52):
         planter(b, x, -33.5)
+    for x in (-14, -8, 8, 14):
+        planter(b, x, 26.8)
+    for y in (-56, -48, 44, 52):
+        planter(b, 26.8, y)
     b.to_object("City")
 
     # strade: griglia a ±30 e ±62
@@ -670,27 +771,35 @@ def build_city_v2():
         rb.box(-30, -8 + i * 2.2, 0.06, 4.8, 1.0, 0.03)     # strisce laterali
     rb.to_object("Roads")
 
-    # pali fitti con matasse di cavi su due vie
+    # pali con catenarie parallele pulite (stile v1)
     pb = Builder()
-    prnd = random.Random(5)
-    def wire_run(xs, y_base, z_top):
-        for x in xs:
-            power_pole(pb, x, y_base, h=7.0)
-        for a, bx in zip(xs, xs[1:]):
-            for k in range(prnd.randint(5, 7)):
-                dy = prnd.uniform(-0.9, 0.9)
-                dz = prnd.uniform(-1.6, -0.2)
-                sag = prnd.uniform(0.4, 0.9)
-                mid = ((a + bx) / 2, y_base + dy + prnd.uniform(-0.4, 0.4), z_top + dz - sag)
-                pb.tube((a, y_base + dy, z_top + dz), mid, r=0.02, seg=3)
-                pb.tube(mid, (bx, y_base + dy, z_top + dz), r=0.02, seg=3)
-    wire_run(list(range(-88, 89, 11)), -34.6, 7.0)
-    wire_run(list(range(-88, 89, 13)), 33.8, 7.0)
-    # cavi trasversali che attraversano la via principale
-    for x in (-44, -11, 22, 55):
-        for k in range(2):
-            dz = -0.4 - k * 0.5
-            pb.tube((x, -34.6, 7 + dz), (x + prnd.uniform(-2, 2), -25.4, 6.4 + dz), r=0.02, seg=3)
+    def wire_run(coords, fixed, z_top, axis='x'):
+        # axis='x': corre lungo x a y=fixed; axis='y': lungo y a x=fixed
+        for v in coords:
+            if axis == 'x':
+                power_pole(pb, v, fixed, h=7.0)
+            else:
+                power_pole(pb, fixed, v, h=7.0)
+        for a, c2 in zip(coords, coords[1:]):
+            for dz, dt in ((-0.5, -0.8), (-0.5, 0.8), (-1.4, -0.6), (-1.4, 0.6)):
+                sag = 0.55
+                if axis == 'x':
+                    p0 = (a, fixed + dt, z_top + dz)
+                    p1 = (c2, fixed + dt, z_top + dz)
+                    mid = ((a + c2) / 2, fixed + dt, z_top + dz - sag)
+                else:
+                    p0 = (fixed + dt, a, z_top + dz)
+                    p1 = (fixed + dt, c2, z_top + dz)
+                    mid = (fixed + dt, (a + c2) / 2, z_top + dz - sag)
+                pb.tube(p0, mid, r=0.022, seg=3)
+                pb.tube(mid, p1, r=0.022, seg=3)
+    wire_run(list(range(-88, 89, 18)), -34.6, 7.0, axis='x')
+    wire_run(list(range(-88, 89, 18)), 33.8, 7.0, axis='x')
+    wire_run(list(range(-80, 81, 18)), -34.2, 7.0, axis='y')
+    # due attraversamenti puliti sulla via principale
+    for x in (-16, 40):
+        for dz in (-0.5, -1.0):
+            pb.tube((x, -34.6, 7 + dz), (x, -25.6, 6.6 + dz), r=0.022, seg=3)
     pb.to_object("Poles")
 
     cb = Builder()

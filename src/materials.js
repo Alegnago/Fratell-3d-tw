@@ -68,6 +68,7 @@ export function makeLogoMaterial(texture) {
     map: texture,
     transparent: true,
     toneMapped: false,
+    side: DoubleSide,
     polygonOffset: true,
     polygonOffsetFactor: -2,
     polygonOffsetUnits: -2,

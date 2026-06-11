@@ -124,6 +124,7 @@ initPanel(ctx);
 window.__rig = rig;
 window.__scene = scene;
 window.__ctx = ctx;
+window.__renderer = renderer;
 
 function resize() {
   const w = app.clientWidth;
