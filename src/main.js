@@ -11,11 +11,17 @@ import {
   WebGLRenderer,
 } from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { COLORS, groundShadowMaterial, makeLogoMaterial } from './materials.js';
+import { groundShadowMaterial, makeLogoMaterial } from './materials.js';
+import { STYLES, applyStyle } from './styles.js';
 import { applyInkStyle } from './edges.js';
 import { CameraRig } from './cameraRig.js';
-import modelUrl from '../assets/fratelli_city.glb?url';
+import { initPanel } from './panel.js';
+import modelV1Url from '../assets/fratelli_city.glb?url';
+import modelV2Url from '../assets/fratelli_city_v2.glb?url';
 import logoUrl from '../assets/logo.svg?url';
+
+const MODELS = { v1: modelV1Url, v2: modelV2Url };
+const DEFAULT_MODEL = 'v2';
 
 const app = document.getElementById('app');
 const dpr = Math.min(window.devicePixelRatio, 2);
@@ -33,56 +39,91 @@ renderer.shadowMap.type = PCFShadowMap;
 app.appendChild(renderer.domElement);
 
 const scene = new Scene();
-scene.background = new Color(COLORS.background);
+scene.background = new Color(0xf5f5f3);
 
 const rig = new CameraRig(app);
-window.__rig = rig;
-window.__scene = scene;
-window.__renderer = renderer;
 
-// luci — palette adidas
-scene.add(new AmbientLight(COLORS.ambientLight, 2.2));
-const sun = new DirectionalLight(COLORS.directionalLight, 1.6);
-sun.position.set(60, 90, -40);
-sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
-sun.shadow.camera.left = -110;
-sun.shadow.camera.right = 110;
-sun.shadow.camera.top = 110;
-sun.shadow.camera.bottom = -110;
-sun.shadow.camera.far = 300;
-sun.shadow.bias = -0.0005;
-scene.add(sun);
+const ambientLight = new AmbientLight(0xf1e9d9, 2.2);
+scene.add(ambientLight);
+const directionalLight = new DirectionalLight(0xffffff, 1.6);
+directionalLight.position.set(60, 90, -40);
+directionalLight.castShadow = true;
+directionalLight.shadow.mapSize.set(2048, 2048);
+directionalLight.shadow.camera.left = -110;
+directionalLight.shadow.camera.right = 110;
+directionalLight.shadow.camera.top = 110;
+directionalLight.shadow.camera.bottom = -110;
+directionalLight.shadow.camera.far = 300;
+directionalLight.shadow.bias = -0.0005;
+scene.add(directionalLight);
 
-// terreno: riceve solo ombre beige
 const ground = new Mesh(new PlaneGeometry(500, 500), groundShadowMaterial);
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 scene.add(ground);
 
-new GLTFLoader().load(modelUrl, (gltf) => {
-  const root = gltf.scene;
-  applyInkStyle(root, { skipNames: ['Logo'] });
-
-  // SVG rasterizzato su canvas: sfondo trasparente garantito
-  const logo = root.getObjectByName('Logo');
-  if (logo) {
-    const img = new Image();
-    img.onload = () => {
-      const cnv = document.createElement('canvas');
-      cnv.width = cnv.height = 1024;
-      cnv.getContext('2d').drawImage(img, 0, 0, 1024, 1024);
-      const tex = new CanvasTexture(cnv);
-      tex.colorSpace = SRGBColorSpace;
-      tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-      logo.material = makeLogoMaterial(tex);
-    };
-    img.src = logoUrl;
-  }
-
-  scene.add(root);
-  renderer.domElement.classList.add('ready');
+// logo condiviso tra i modelli: SVG rasterizzato su canvas (sfondo trasparente)
+let logoMaterial = null;
+const logoReady = new Promise((resolve) => {
+  const img = new Image();
+  img.onload = () => {
+    const cnv = document.createElement('canvas');
+    cnv.width = cnv.height = 1024;
+    cnv.getContext('2d').drawImage(img, 0, 0, 1024, 1024);
+    const tex = new CanvasTexture(cnv);
+    tex.colorSpace = SRGBColorSpace;
+    tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    logoMaterial = makeLogoMaterial(tex);
+    resolve();
+  };
+  img.src = logoUrl;
 });
+
+const loader = new GLTFLoader();
+const modelCache = {};
+let currentRoot = null;
+let currentModel = DEFAULT_MODEL;
+
+function setModel(key) {
+  currentModel = key;
+  if (currentRoot) scene.remove(currentRoot);
+  currentRoot = null;
+  const attach = (root) => {
+    if (currentModel !== key) return; // switch nel frattempo
+    currentRoot = root;
+    scene.add(root);
+  };
+  if (modelCache[key]) {
+    attach(modelCache[key]);
+    return;
+  }
+  loader.load(MODELS[key], async (gltf) => {
+    const root = gltf.scene;
+    applyInkStyle(root, { skipNames: ['Logo'] });
+    await logoReady;
+    const logo = root.getObjectByName('Logo');
+    if (logo) logo.material = logoMaterial;
+    modelCache[key] = root;
+    attach(root);
+  });
+}
+setModel(DEFAULT_MODEL);
+
+const ctx = {
+  scene,
+  ambientLight,
+  directionalLight,
+  setModel,
+  get currentModel() {
+    return currentModel;
+  },
+};
+applyStyle(STYLES.Crema, ctx);
+initPanel(ctx);
+
+window.__rig = rig;
+window.__scene = scene;
+window.__ctx = ctx;
 
 function resize() {
   const w = app.clientWidth;

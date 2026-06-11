@@ -2,7 +2,7 @@
 import { EdgesGeometry, LineSegments } from 'three';
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { ConditionalEdgesGeometry } from './ConditionalEdgesGeometry.js';
-import { surfaceMaterial, lineMaterial, makeConditionalMaterial } from './materials.js';
+import { getGroupMaterial, lineMaterial, makeConditionalMaterial } from './materials.js';
 
 const THRESHOLD_ANGLE = 40;
 
@@ -13,7 +13,7 @@ export function applyInkStyle(root, { skipNames = [] } = {}) {
   });
 
   for (const mesh of meshes) {
-    mesh.material = surfaceMaterial;
+    mesh.material = getGroupMaterial(mesh.name);
     mesh.castShadow = !/cloud/i.test(mesh.name);
     mesh.receiveShadow = true;
 
