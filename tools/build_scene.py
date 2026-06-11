@@ -7,7 +7,7 @@ import random
 import os
 import sys
 
-VERSION = 2
+VERSION = 3
 if '--' in sys.argv:
     args = sys.argv[sys.argv.index('--') + 1:]
     if '--version' in args:
@@ -19,7 +19,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ASSETS = os.path.join(ROOT, "assets")
 os.makedirs(ASSETS, exist_ok=True)
 
-SUFFIX = "" if VERSION == 1 else "_v2"
+SUFFIX = {1: "", 2: "_v2", 3: "_v3"}[VERSION]
 
 # ---------------------------------------------------------------- scene reset
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -584,6 +584,44 @@ def build_hq_v2(b):
         tree(b, hw - 2.2, y, scale=0.95, lollipop=False)
     for x in (-22, -14, 8, 16, 24):
         tree(b, x, hd - 2.6, scale=1.0, lollipop=False)
+    if VERSION >= 3:
+        # ---- fedeltà extra alla foto
+        for i in range(2):                                  # scalini ingresso
+            b.box(5.0, -3.25 + i * 0.35, 0.36 + i * 0.1, 8.0 - i * 0.7, 0.45, 0.1)
+        windows_grid(b, -1.3, 4.0 - 7.05, 6.3, 1.1, 1.25, 1, 2,
+                     axis='y', gap_z=0.5)                   # colonna vetrata a sx del nero
+        b.box(5.5, -4.35, 3.95, 13.2, 1.6, 0.14)            # soffitto bianco sotto lo sbalzo
+        for yy in (1.0, 3.2):                               # AC parete destra uffici
+            b.box(18.35, yy, 5.3, 0.5, 0.85, 0.7)
+        b.tube((2.0, 8.0, 9.5), (9.0, 8.5, 9.5), r=0.07)    # tubazioni tetto
+        b.tube((9.0, 8.5, 9.5), (9.0, 8.5, 10.6), r=0.07)
+        slat_facade(b, -13.5, 3.0 - 7.55, 4.55, 5.65, 14.2,
+                    axis='y', fin=0.035, depth=0.06)        # lamiera capannone (fascia alta)
+        b.box(21.5, -3.25, 1.5, 1.1, 0.06, 0.9)             # targhetta muro destro
+
+        # ---- piazzale: guardiole, sbarre, mezzi, segnaletica, totem, arredo
+        guard_booth(b, 11.2, -19.6)
+        guard_booth(b, 19.8, -19.6)
+        barrier(b, 1.3, -20.2, rot=0.0, length=6.5)
+        barrier(b, 25.6, -20.2, rot=math.pi, length=4.4)
+        car(b, 3.6, -12.6, rot=math.pi / 2)
+        car(b, 6.6, -12.4, rot=math.pi / 2)
+        car(b, 12.0, -12.5, rot=math.pi / 2)
+        truck(b, -1.0, -13.0, rot=math.pi / 2)              # furgone
+        forklift(b, -11.0, -6.2, rot=-0.5)
+        for i in range(5):                                  # tratteggio vialetto carraio
+            b.box(5.0, -20.5 + i * 2.6, 0.33, 0.2, 1.2, 0.03)
+        for i in range(5):                                  # zebrato pedonale verso ingresso
+            b.box(1.0 + i * 1.6, -8.0, 0.33, 0.9, 2.4, 0.03)
+        for x, ang in ((5.0, 0.0), (23.0, 0.0)):            # frecce direzionali
+            b.box(x, -16.5, 0.33, 0.25, 1.6, 0.03)
+            b.prism(x, -15.4, 0.32, 0.8, 0.6, 0.035, rot=ang)
+        b.box(25.0, -8.6, 0.55, 1.3, 1.3, 0.5)              # totem insegna su base
+        sign_board(b, 25.0, -8.6, 5.0, w=1.0, h=3.6, depth=0.45)
+        lamp_post(b, -2.5, -14.5)
+        lamp_post(b, 16.5, -17.5)
+        hydrant(b, 24.6, -17.8)
+
     # logo sul pannello insegna del volume nero
     return (5.5, -5.14 - 0.08, 5.95, 2.9)
 
@@ -733,6 +771,95 @@ def block_lowrise(b, cx, cy, seed, half=14.5):
     fence_block(b, cx, cy, 0, half)
 
 
+def forklift(b, x, y, rot=0.0):
+    c, s = math.cos(rot), math.sin(rot)
+    def at(lx, ly):
+        return x + lx * c - ly * s, y + lx * s + ly * c
+    b.box(x, y, 0.75, 1.7, 1.05, 1.1, rot)               # corpo
+    px, py = at(0.2, 0)
+    b.box(px, py, 1.85, 0.9, 0.95, 1.1, rot)             # tettuccio su montanti
+    for lx, ly in ((-0.2, -0.4), (-0.2, 0.4), (0.55, -0.4), (0.55, 0.4)):
+        px, py = at(lx, ly)
+        b.tube((px, py, 1.3), (px, py, 1.85), r=0.04)
+    px, py = at(1.0, 0)
+    b.box(px, py, 1.3, 0.12, 0.9, 2.4, rot)              # montante
+    for ly in (-0.3, 0.3):
+        px, py = at(1.35, ly)
+        b.box(px, py, 0.12, 0.7, 0.12, 0.08, rot)        # forche
+    for lx in (-0.6, 0.6):
+        for ly in (-0.55, 0.55):
+            px, py = at(lx, ly)
+            b.box(px, py, 0.26, 0.5, 0.18, 0.5, rot)
+
+
+def barrier(b, x, y, rot=0.0, length=5.0):
+    # sbarra varco: colonnina + braccio
+    b.box(x, y, 0.55, 0.32, 0.32, 1.1, rot)
+    c, s = math.cos(rot), math.sin(rot)
+    b.tube((x, y, 1.05), (x + c * length, y + s * length, 1.12), r=0.06)
+
+
+def guard_booth(b, x, y):
+    b.box(x, y, 0.3 + 1.25, 2.2, 2.2, 2.5)
+    b.box(x, y - 1.13, 1.95, 1.3, 0.06, 0.9)   # finestra fronte
+    b.box(x - 1.13, y, 1.95, 0.06, 1.1, 0.9)   # finestra laterale
+    b.box(x, y, 2.95, 2.7, 2.7, 0.18)
+
+
+def lamp_post(b, x, y, h=5.5):
+    b.cylinder(x, y, 0, 0.09, h, seg=6)
+    b.tube((x, y, h), (x + 0.9, y, h + 0.25), r=0.05)
+    b.box(x + 1.05, y, h + 0.28, 0.6, 0.3, 0.18)
+
+
+def hydrant(b, x, y):
+    b.cylinder(x, y, 0, 0.17, 0.75, seg=8)
+    b.sphere(x, y, 0.78, 0.17, sub=1)
+    b.box(x, y, 0.45, 0.55, 0.14, 0.12)
+
+
+def bus_stop(b, x, y, rot=0.0):
+    # pensilina: 2 montanti, tettoia, pannello schienale + palina
+    c, s = math.cos(rot), math.sin(rot)
+    def at(lx, ly):
+        return x + lx * c - ly * s, y + lx * s + ly * c
+    for lx in (-1.9, 1.9):
+        px, py = at(lx, 0)
+        b.tube((px, py, 0), (px, py, 2.5), r=0.05)
+    b.box(x, y, 2.55, 4.6, 1.5, 0.12, rot)
+    px, py = at(0, 0.6)
+    b.box(px, py, 1.5, 4.2, 0.08, 1.2, rot)
+    px, py = at(0, -0.45)
+    b.box(px, py, 0.55, 3.6, 0.35, 0.08, rot)            # panchina
+    px, py = at(3.1, 0.3)
+    b.tube((px, py, 0), (px, py, 2.9), r=0.04)           # palina
+    b.box(px, py, 2.75, 0.55, 0.08, 0.45, rot)
+
+
+def green_strip(b, x0, x1, y0, y1, seed):
+    # fascia verde tra recinzione isolato e strada: prato + filare + cespugli
+    rnd = random.Random(seed)
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    w, d = x1 - x0, y1 - y0
+    b.box(cx, cy, 0.04, w, d, 0.08)
+    along_x = w >= d
+    length = max(w, d)
+    n = max(2, int(length / 6.0))
+    for i in range(n):
+        t = (i + 0.5) / n
+        jx = rnd.uniform(-1.0, 1.0)
+        jy = rnd.uniform(-1.0, 1.0)
+        if along_x:
+            tx, ty = x0 + t * w + jx, cy + jy * (d / 4)
+        else:
+            tx, ty = cx + jx * (w / 4), y0 + t * d + jy
+        tree(b, tx, ty, scale=rnd.uniform(0.6, 0.95), lollipop=rnd.random() < 0.5)
+    for i in range(n + 1):
+        gx = rnd.uniform(x0 + 0.8, x1 - 0.8)
+        gy = rnd.uniform(y0 + 0.8, y1 - 0.8)
+        bush(b, gx, gy, r=rnd.uniform(0.5, 0.9))
+
+
 def parcel_house(b, x, y, rnd, lot=11.0):
     # proprietà privata: casetta + giardino + auto nel vialetto
     rot = rnd.choice([0, math.pi / 2])
@@ -799,7 +926,8 @@ def parcel_garden(b, x, y, rnd, lot=11.0):
 def parcel_greens(b, lx, ly, rnd, lot=11.0):
     # verde di riempimento dove l'edificio non occupa tutto il lotto:
     # alberi e cespugli lungo i bordi, fuori dall'impronta centrale
-    for i in range(rnd.randint(2, 3)):
+    # (in v3 il verde grosso sta nelle fasce stradali: qui solo un tocco)
+    for i in range(rnd.randint(1, 2) if VERSION >= 3 else rnd.randint(2, 3)):
         ang = rnd.uniform(0, 2 * math.pi)
         rad = rnd.uniform(lot * 0.40, lot * 0.48)
         gx, gy = lx + rad * math.cos(ang), ly + rad * math.sin(ang)
@@ -837,6 +965,42 @@ def block_parcels(b, cx, cy, seed, half=13.0):
             if rnd.random() < 0.5:
                 tree(b, cx + sx * (half - 1.6), cy + sy * (half - 1.6),
                      scale=rnd.uniform(0.5, 0.8), lollipop=rnd.random() < 0.5)
+
+
+def block_shops(b, cx, cy, seed, half=13.0):
+    # isolato commerciale di fronte all'HQ: vetrine sul lato nord,
+    # lotti privati dietro
+    rnd = random.Random(seed)
+    n = 5
+    total = half * 2 - 2
+    xw = total / n
+    for i in range(n):
+        x = cx - total / 2 + xw * (i + 0.5)
+        h = rnd.uniform(3.2, 4.6)
+        d = rnd.uniform(5.5, 6.5)
+        y = cy + half - d / 2
+        b.box(x, y, h / 2 + 0.05, xw * 0.94, d, h)
+        b.box(x, y, h + 0.18, xw * 1.0, d + 0.4, 0.3)        # cornicione
+        # vetrina + tenda verso la strada (nord)
+        b.box(x, cy + half - 0.04, 1.5, xw * 0.7, 0.08, 2.2)
+        b.prism(x, cy + half + 0.7, 2.6, xw * 0.8, 1.3, 0.45)
+        if rnd.random() < 0.6:
+            flag_sign(b, x + xw * 0.3, cy + half, h - 0.2, rot=math.pi / 2,
+                      h=rnd.uniform(1.8, 2.6), out=0.9)
+        if rnd.random() < 0.5:
+            ac_units(b, x, y + d / 2 + 0.3, h - 1.0, n=1)
+        if rnd.random() < 0.5:
+            water_tank(b, x, y + rnd.uniform(-1, 1), h + 0.4)
+    # scooter dei clienti davanti alle vetrine
+    for i in range(6):
+        scooter(b, cx - 8 + i * 2.6, cy + half + 2.2, rot=math.pi / 2 + rnd.uniform(-0.2, 0.2))
+    # retro: due lotti privati
+    parcel_house(b, cx - half / 2, cy - half / 2, rnd, lot=half - 1)
+    parcel_tower(b, cx + half / 2, cy - half / 2, rnd)
+    # recinzione su tre lati (nord aperto: vetrine su strada)
+    fence(b, cx, cy - half, 2 * half * 0.92, rot=0)
+    fence(b, cx - half, cy, 2 * half * 0.92, rot=math.pi / 2)
+    fence(b, cx + half, cy, 2 * half * 0.92, rot=math.pi / 2)
 
 
 # ---------------------------------------------------------------- city v1
@@ -908,11 +1072,39 @@ def build_city_v2():
             ring = max(abs(cx), abs(cy))
             seed = cx * 17 + cy * 31
             r = rnd.random()
-            if ring == 78 and r < 0.12:
+            if VERSION >= 3 and cx == 0 and cy == -46:
+                # isolato commerciale di fronte all'HQ
+                block_shops(b, cx, cy, seed=seed, half=half)
+            elif ring == 78 and r < 0.12:
                 block_factory(b, cx, cy, rot=rnd.choice([0, math.pi / 2]))
             else:
                 # ogni isolato = 4 lotti privati separati da muretti
                 block_parcels(b, cx, cy, seed=seed, half=half)
+    if VERSION >= 3:
+        # fasce verdi nelle strisce vuote dei blocchi sull'asse centrale
+        # (celle larghe 54 con isolato largo 26 -> bande laterali di ~13)
+        for v in (-78, -46, 46, 78):
+            for side in (-1, 1):
+                x0, x1 = (14.5, 26.5) if side > 0 else (-26.5, -14.5)
+                green_strip(b, x0, x1, v - 12, v + 12, seed=v * side)
+                green_strip(b, v - 12, v + 12, x0, x1, seed=v * side + 1)
+        # viali alberati attorno al piazzale HQ (salta varchi carrai e incroci)
+        grnd = random.Random(21)
+        for x in range(-50, 51, 8):
+            if -3 < x < 13 or 18 < x < 28:
+                continue
+            tree(b, x + grnd.uniform(-1, 1), -24.8, scale=grnd.uniform(0.6, 0.85),
+                 lollipop=grnd.random() < 0.6)
+        for x in range(-46, 47, 9):
+            tree(b, x + grnd.uniform(-1, 1), 24.8, scale=grnd.uniform(0.6, 0.85),
+                 lollipop=grnd.random() < 0.6)
+        for y in range(-20, 21, 9):
+            tree(b, -24.8, y + grnd.uniform(-1, 1), scale=grnd.uniform(0.6, 0.85),
+                 lollipop=grnd.random() < 0.6)
+            tree(b, 24.8, y + grnd.uniform(-1, 1), scale=grnd.uniform(0.6, 0.85),
+                 lollipop=grnd.random() < 0.6)
+        # fermata bus sul marciapiede opposto, di fronte all'HQ
+        bus_stop(b, 15.0, -33.9, rot=math.pi)
     # vie vive: bancarelle, scooter e verde su tutte le strade principali
     srnd = random.Random(11)
     for x in (-40, -34, 36, 42, -72, 68):
@@ -950,6 +1142,9 @@ def build_city_v2():
         rb.box(-5.5 + i * 2.2, -30, 0.06, 1.0, 4.8, 0.03)   # strisce davanti all'ingresso
     for i in range(5):
         rb.box(-30, -8 + i * 2.2, 0.06, 4.8, 1.0, 0.03)     # strisce laterali
+    if VERSION >= 3:
+        for i in range(6):                                   # attraversamento varco destro
+            rb.box(18.5 + i * 2.2, -30, 0.06, 1.0, 4.8, 0.03)
     rb.to_object("Roads")
 
     # pali con catenarie parallele pulite (stile v1)

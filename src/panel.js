@@ -45,7 +45,7 @@ export function initPanel(ctx) {
   pane
     .addBinding(state, 'modello', {
       label: 'Modello',
-      options: { 'v2 — denso': 'v2', 'v1 — classico': 'v1' },
+      options: { 'v3 — contesto': 'v3', 'v2 — denso': 'v2', 'v1 — classico': 'v1' },
     })
     .on('change', (ev) => ctx.setModel(ev.value));
 

@@ -18,10 +18,11 @@ import { CameraRig } from './cameraRig.js';
 import { initPanel } from './panel.js';
 import modelV1Url from '../assets/fratelli_city.glb?url';
 import modelV2Url from '../assets/fratelli_city_v2.glb?url';
+import modelV3Url from '../assets/fratelli_city_v3.glb?url';
 import logoUrl from '../assets/logo.svg?url';
 
-const MODELS = { v1: modelV1Url, v2: modelV2Url };
-const DEFAULT_MODEL = 'v2';
+const MODELS = { v1: modelV1Url, v2: modelV2Url, v3: modelV3Url };
+const DEFAULT_MODEL = 'v3';
 
 const app = document.getElementById('app');
 const dpr = Math.min(window.devicePixelRatio, 2);
