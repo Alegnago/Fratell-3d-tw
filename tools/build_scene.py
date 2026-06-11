@@ -733,6 +733,77 @@ def block_lowrise(b, cx, cy, seed, half=14.5):
     fence_block(b, cx, cy, 0, half)
 
 
+def parcel_house(b, x, y, rnd, lot=11.0):
+    # proprietà privata: casetta + giardino + auto nel vialetto
+    rot = rnd.choice([0, math.pi / 2])
+    hx = x + rnd.uniform(-1.2, 1.2)
+    hy = y + rnd.uniform(-1.2, 1.2)
+    w, d, h = rnd.uniform(5.5, 7.0), rnd.uniform(4.5, 5.5), rnd.uniform(3.0, 4.0)
+    b.box(hx, hy, h / 2, w, d, h, rot)
+    b.gable(hx, hy, h, w * 1.08, d * 1.14, rnd.uniform(1.3, 1.8), rot)
+    windows_grid(b, hx, hy - (d / 2 + 0.03) * math.cos(rot), 1.6, 1.0, 1.1, 2, 1,
+                 axis='y' if rot == 0 else 'x', gap_x=1.2)
+    if rnd.random() < 0.5:
+        antenna(b, hx + 1.0, hy, h + 1.4, h=1.6)
+    if rnd.random() < 0.4:
+        water_tank(b, hx - w / 4, hy + d / 4, h + 1.2)
+    # giardino: alberi, cespugli, siepe interna
+    tree(b, x + rnd.uniform(2.5, 4.2) * rnd.choice([-1, 1]), y + rnd.uniform(2.5, 4.2),
+         scale=rnd.uniform(0.55, 0.85), lollipop=rnd.random() < 0.6)
+    for i in range(rnd.randint(1, 3)):
+        bush(b, x + rnd.uniform(-4.2, 4.2), y + rnd.uniform(-4.2, 4.2), r=rnd.uniform(0.5, 0.85))
+    hedge(b, x, y - lot / 2 + 0.7, lot * 0.55, rot=0, h=0.7)
+    # auto nel vialetto
+    car(b, x + rnd.uniform(2.6, 3.6) * rnd.choice([-1, 1]), y - rnd.uniform(2.4, 3.6),
+        rot=rot + rnd.uniform(-0.1, 0.1))
+    if rnd.random() < 0.4:
+        scooter(b, x - 2.0, y - 1.5, rot=rnd.uniform(0, math.pi))
+
+
+def parcel_tower(b, x, y, rnd):
+    w = rnd.uniform(5.0, 6.8)
+    d = rnd.uniform(5.0, 6.8)
+    h = rnd.uniform(11, 21)
+    asian_tower(b, x, y, w, d, h, rnd, dense=True)
+    bush(b, x + w / 2 + 1.0, y - d / 2 - 0.5, r=0.7)
+    if rnd.random() < 0.6:
+        car(b, x - w / 2 - 1.8, y + rnd.uniform(-2, 2), rot=math.pi / 2)
+
+
+def parcel_workshop(b, x, y, rnd):
+    w, d, h = rnd.uniform(6.5, 8.0), rnd.uniform(5.5, 6.5), rnd.uniform(3.5, 4.5)
+    b.box(x, y, h / 2, w, d, h)
+    b.prism(x, y, h, w * 1.06, d * 1.1, rnd.uniform(0.8, 1.2))
+    roller_shutter(b, x, y - d / 2 - 0.06, 0.15, min(3.4, w - 2.4), h - 1.4)
+    pallet_stack(b, x + w / 2 + 1.0, y - 1.0, rot=rnd.uniform(0, 0.5), n=rnd.randint(1, 3))
+    if rnd.random() < 0.6:
+        truck(b, x - w / 2 - 2.4, y - 0.5, rot=math.pi / 2)
+    else:
+        car(b, x - w / 2 - 1.8, y - 0.5, rot=math.pi / 2)
+    chimney(b, x + w / 4, y + d / 4, h + 2.0, r=0.25)
+
+
+def block_parcels(b, cx, cy, seed, half=13.0):
+    # isolato diviso in 4 lotti privati con separatori (muretti)
+    rnd = random.Random(seed)
+    lot = half - 1.0
+    # recinzione perimetrale + muretti divisori a croce
+    fence_block(b, cx, cy, 0, half)
+    b.box(cx, cy, 0.55, half * 2 * 0.9, 0.18, 1.1)
+    b.box(cx, cy, 0.55, 0.18, half * 2 * 0.9, 1.1)
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            lx = cx + sx * half / 2
+            ly = cy + sy * half / 2
+            r = rnd.random()
+            if r < 0.45:
+                parcel_house(b, lx, ly, rnd, lot=lot)
+            elif r < 0.8:
+                parcel_tower(b, lx, ly, rnd)
+            else:
+                parcel_workshop(b, lx, ly, rnd)
+
+
 # ---------------------------------------------------------------- city v1
 def build_city_v1():
     b = Builder()
@@ -802,12 +873,11 @@ def build_city_v2():
             ring = max(abs(cx), abs(cy))
             seed = cx * 17 + cy * 31
             r = rnd.random()
-            if ring == 78 and r < 0.18:
+            if ring == 78 and r < 0.12:
                 block_factory(b, cx, cy, rot=rnd.choice([0, math.pi / 2]))
-            elif r < 0.7:
-                block_towers(b, cx, cy, seed=seed, half=half)
             else:
-                block_lowrise(b, cx, cy, seed=seed, half=half)
+                # ogni isolato = 4 lotti privati separati da muretti
+                block_parcels(b, cx, cy, seed=seed, half=half)
     # vie vive: bancarelle, scooter e verde su tutte le strade principali
     srnd = random.Random(11)
     for x in (-40, -34, 36, 42, -72, 68):
