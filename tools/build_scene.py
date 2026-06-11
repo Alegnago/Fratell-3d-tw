@@ -217,6 +217,51 @@ def dumpster(b, x, y, rot=0.0):
     b.prism(x, y, 1.3, 1.9, 1.1, 0.3, rot)
 
 
+def bush(b, x, y, r=1.0):
+    b.sphere(x, y, r * 0.55, r, sub=2, squash=0.62)
+
+
+def ext_stair(b, x, y, rot=0.0, h=3.0, n=9, w=1.1):
+    # scala esterna metallica: sale lungo +x locale, pianerottolo in cima
+    c, s = math.cos(rot), math.sin(rot)
+    def at(lx, ly):
+        return x + lx * c - ly * s, y + lx * s + ly * c
+    run = 0.34
+    for i in range(n):
+        px, py = at((i + 0.5) * run, 0)
+        b.box(px, py, (i + 0.7) * h / n, run, w, h / n * 0.55, rot)
+    px, py = at(n * run + 0.55, 0)
+    b.box(px, py, h + 0.04, 1.1, w, 0.09, rot)            # pianerottolo
+    for ly in (-w / 2, w / 2):                            # corrimano
+        p0 = at(0.2, ly)
+        p1 = at(n * run, ly)
+        b.tube((p0[0], p0[1], 1.0), (p1[0], p1[1], 1.0 + h), r=0.025)
+        p2 = at(n * run + 1.05, ly)
+        b.tube((p1[0], p1[1], 1.0 + h), (p2[0], p2[1], 1.0 + h), r=0.025)
+        for lx, zb in ((0.3, 0.15), (n * run * 0.55, h * 0.55), (n * run + 0.9, h)):
+            pp = at(lx, ly)
+            b.tube((pp[0], pp[1], zb), (pp[0], pp[1], zb + 1.0), r=0.02)
+
+
+def flat_sign(b, x, y, z_top, h=4.0, w=0.7, rot=0.0):
+    # insegna verticale piatta a muro con listelli (ideogrammi astratti)
+    c, s = math.cos(rot), math.sin(rot)
+    b.box(x, y, z_top - h / 2, abs(c) * w + abs(s) * 0.14, abs(s) * w + abs(c) * 0.14, h, 0)
+    n = int(h / 0.7)
+    for i in range(n):
+        z = z_top - h + h * (i + 0.5) / n
+        b.box(x - s * 0.1, y + c * 0.1, z, abs(c) * w * 0.6 + abs(s) * 0.05, abs(s) * w * 0.6 + abs(c) * 0.05, 0.4)
+
+
+def dark_tank(b, x, y, z, r=1.15, h=2.3):
+    # serbatoio tondo su gambe corte
+    for ang in range(3):
+        a = ang * 2 * math.pi / 3
+        b.box(x + 0.6 * math.cos(a), y + 0.6 * math.sin(a), z + 0.3, 0.14, 0.14, 0.6)
+    b.cylinder(x, y, z + 0.6, r, h, seg=12)
+    b.cylinder(x, y, z + 0.6 + h, r * 0.35, 0.3, seg=8)
+
+
 def roller_shutter(b, x, y, z0, w, h, rot=0.0):
     # saracinesca: doghe orizzontali impilate
     c, s = math.cos(rot), math.sin(rot)
@@ -433,83 +478,114 @@ def build_hq_v1(b):
 
 
 def build_hq_v2(b):
-    # fabbrica reale (rif. Street View Glory Wheel, Taichung):
-    # uffici bianchi + volume nero a sbalzo con logo, capannoni, piazzale
+    # sede reale (Street View Glory Wheel, Taichung) — riproduzione fedele:
+    # uffici bianchi, volume nero alto 2 livelli con logo, capannone con
+    # saracinesca + canopy scuro + insegna verticale, scala esterna,
+    # serbatoio tondo scuro sul tetto, piazzale con stalli/SUV/scooter
     plaza_w, plaza_d = 56, 44
     hw, hd = plaza_w / 2, plaza_d / 2
     b.box(0, 0, 0.15, plaza_w, plaza_d, 0.3)
-    b.box(0, -hd - 1.2, 0.08, 14, 3.0, 0.16)  # raccordo strada
+    b.box(5, -hd - 1.2, 0.08, 12, 3.0, 0.16)   # raccordo carraio centrale
+    b.box(23, -hd - 1.2, 0.08, 6, 3.0, 0.16)   # raccordo carraio destro
 
-    # ---- blocco uffici (destra): 2 piani bianchi
-    b.box(7.0, 3.0, 0.3 + 3.5, 18, 13, 7)
-    # nastro finestre primo piano
-    windows_grid(b, 7.0, 3.0 - 6.55, 5.0, 1.5, 1.4, 6, 1, axis='y', gap_x=0.55)
-    windows_grid(b, 7.0 + 9.05, 3.0, 5.0, 1.4, 1.4, 4, 1, axis='x', gap_x=0.7)
-    b.box(7.0, 3.0, 7.55, 18.5, 13.5, 0.5)  # cornicione
-    # ingresso vetrato piano terra
-    windows_grid(b, 7.0, 3.0 - 6.6, 1.7, 1.6, 2.6, 4, 1, axis='y', gap_x=0.35)
-    b.box(7.0, -4.6, 3.45, 8.5, 2.6, 0.25)  # pensilina ingresso
+    # ============ UFFICI (centro-destra): 2 piani + tetto praticabile
+    b.box(8.0, 4.0, 0.3 + 4.25, 20, 14, 8.5)
+    b.box(8.0, 4.0, 9.3, 20.5, 14.5, 0.45)                # coping
+    b.box(8.0, 4.0 - 7.2, 9.95, 19.5, 0.1, 0.85)          # parapetto tetto fronte
+    b.box(8.0 + 10.2, 4.0, 9.95, 0.1, 13.5, 0.85)         # parapetto lato dx
+    # piano terra: ingresso vetrato centrato sotto il volume nero
+    windows_grid(b, 5.0, 4.0 - 7.05, 1.65, 1.35, 2.7, 5, 1, axis='y', gap_x=0.3)
+    b.box(5.0, -3.55, 3.25, 9.0, 1.7, 0.18)               # pensilina sottile
+    # nastro vetri livello 2 a destra del volume nero + lato destro
+    windows_grid(b, 15.5, 4.0 - 7.05, 6.3, 1.35, 1.25, 3, 1, axis='y', gap_x=0.45)
+    windows_grid(b, 8.0 + 10.05, 4.0, 6.3, 1.3, 1.25, 5, 1, axis='x', gap_x=0.65)
+    # volume tecnico arretrato sul tetto
+    b.box(12.0, 8.0, 9.3 + 1.3, 7, 5, 2.6)
+    b.box(12.0, 8.0, 12.05, 7.5, 5.5, 0.3)
+    ac_units(b, 3.0, 8.0, 9.5, n=2)
 
-    # ---- volume nero "GW" a sbalzo sopra l'ingresso (doghe fitte = scuro)
-    b.box(7.0, -4.6, 6.6, 15, 3.2, 4.4)
-    slat_facade(b, 7.0, -4.6 - 1.68, 4.5, 8.7, 14.6, axis='y', n=44, fin=0.07, depth=0.16)
-    slat_facade(b, 7.0 - 7.58, -4.6, 4.5, 8.7, 2.9, axis='x', n=9, fin=0.07, depth=0.16)
-    slat_facade(b, 7.0 + 7.58, -4.6, 4.5, 8.7, 2.9, axis='x', n=9, fin=0.07, depth=0.16)
-    b.box(7.0, -4.6, 8.9, 15.5, 3.7, 0.45)  # coronamento
+    # ============ VOLUME NERO "GW": alto 2 livelli, a sbalzo sul fronte
+    b.box(5.5, -3.6, 6.55, 13, 2.8, 5.1)                  # corpo z 4.0..9.1
+    slat_facade(b, 5.5, -3.6 - 1.47, 4.15, 9.0, 12.6, axis='y', n=42, fin=0.07, depth=0.14)
+    slat_facade(b, 5.5 - 6.54, -3.6, 4.15, 9.0, 2.5, axis='x', n=8, fin=0.07, depth=0.14)
+    slat_facade(b, 5.5 + 6.54, -3.6, 4.15, 9.0, 2.5, axis='x', n=8, fin=0.07, depth=0.14)
+    b.box(5.5, -3.6, 9.25, 13.4, 3.2, 0.35)               # bordo bianco sommitale
+    b.box(5.5, -5.14, 7.4, 5.4, 0.1, 3.3)                 # pannello insegna liscio sul nero
 
-    # ---- volume tecnico sul tetto uffici + serbatoi
-    b.box(11.0, 6.5, 7.55 + 1.5, 8, 6, 3.0)
-    b.box(11.0, 6.5, 10.7, 8.5, 6.5, 0.35)
-    water_tank(b, 2.5, 7.5, 7.8)
-    ac_units(b, 4.5, 3.0, 7.8, n=3)
-
-    # ---- capannone sinistro con saracinesca e pensilina inclinata
-    b.box(-12.0, 3.0, 0.3 + 3.0, 17, 15, 6)
-    b.gable(-12.0, 3.0, 6.3, 17.5, 15.8, 1.7)
-    roller_shutter(b, -13.5, 3.0 - 7.56, 0.45, 5.6, 3.4)
-    b.prism(-13.5, -5.9, 4.6, 7.6, 2.4, 1.0, rot=math.pi)  # pensilina inclinata
-    # finestre alte capannone
-    windows_grid(b, -12.0, 3.0 - 7.55, 4.9, 1.6, 0.9, 5, 1, axis='y', gap_x=0.6)
+    # ============ CAPANNONE SINISTRO: saracinesca, canopy, insegna, scala
+    b.box(-13.5, 3.0, 0.3 + 2.9, 15, 14, 5.8)
+    b.gable(-13.5, 3.0, 6.1, 15.5, 14.8, 1.5)
+    roller_shutter(b, -15.0, 3.0 - 7.06, 0.45, 6.0, 3.8)
+    # canopy scuro inclinato sopra la saracinesca + tiranti
+    b.prism(-15.0, -5.05, 4.85, 8.2, 2.1, 1.05, rot=math.pi)
+    for xx in (-18.6, -11.4):
+        b.tube((xx, -4.15, 5.8), (xx, -6.0, 5.05), r=0.04)
+    # insegna verticale a muro con ideogrammi (tra saracinesca e uffici)
+    flat_sign(b, -10.6, -4.06, 5.2, h=4.4, w=0.75)
+    # scala esterna metallica con pianerottolo (lato sinistro fronte)
+    ext_stair(b, -20.6, -2.2, rot=math.pi / 2, h=3.1, n=9)
+    pallet_stack(b, -19.6, -5.6, rot=0.2)
+    pallet_stack(b, -17.8, -6.3, rot=-0.15, n=2)
     # pluviali
-    for xx in (-20.3, -3.8):
-        b.tube((xx, -4.4, 0.4), (xx, -4.4, 6.2), r=0.07)
-    water_tank(b, -17.0, 8.0, 7.2)
-    chimney(b, -7.0, 9.5, 9.5, r=0.45)
+    for xx in (-20.8, -6.3):
+        b.tube((xx, -4.0, 0.4), (xx, -4.0, 5.9), r=0.07)
+    # tetto: penthouse bianco + serbatoio tondo scuro + tubi
+    b.box(-10.5, 6.5, 6.7, 5.5, 4.5, 2.1)
+    dark_tank(b, -17.0, 5.0, 6.9)
+    b.tube((-17.0, 5.0, 6.9), (-13.2, 6.5, 6.9), r=0.06)
+    chimney(b, -7.5, 9.0, 9.2, r=0.4)
 
-    # ---- capannone lungo sul retro a dente di sega
-    b.box(0.0, 15.5, 0.3 + 2.75, 36, 9, 5.5)
+    # ============ ALA DESTRA: capannone basso + muro con cancello carraio
+    b.box(24.0, 9.0, 0.3 + 2.25, 8, 11, 4.5)
+    b.prism(24.0, 9.0, 4.75, 8.3, 11.5, 1.2)
+    # muro di confine con apertura cancello (x 20.5..26 varco)
+    b.box(19.2, -3.0, 1.55, 2.4, 0.35, 2.5)
+    b.box(27.2, -3.0, 1.55, 1.6, 0.35, 2.5)
+    # blocco insegna in pietra con targa (a destra del cancello)
+    b.box(26.8, -5.8, 1.05, 2.8, 0.9, 2.0)
+    b.box(26.8, -6.32, 1.15, 2.2, 0.08, 1.2)
+
+    # ============ CAPANNONE RETRO a dente di sega
+    b.box(0.0, 16.0, 0.3 + 2.65, 38, 9, 5.3)
     for i in range(5):
-        b.prism(-14.4 + i * 7.2, 15.5, 5.75, 7.2, 9, 1.8)
-    b.tube((14.0, 15.5, 5.8), (14.0, 15.5, 9.0), r=0.3)
+        b.prism(-15.2 + i * 7.6, 16.0, 5.95, 7.6, 9, 1.7)
+    b.tube((15.0, 16.0, 6.0), (15.0, 16.0, 9.2), r=0.3)
+    water_tank(b, -12.0, 17.5, 7.7)
 
-    # ---- piazzale: stalli, auto, scooter, pallet, cassonetto
-    for i in range(5):  # stalli parcheggio davanti agli uffici
-        b.box(9.0 + i * 3.1, -12.5, 0.33, 0.14, 6.0, 0.04)
-    car(b, 10.5, -12.0, rot=math.pi / 2)
-    car(b, 13.6, -12.3, rot=math.pi / 2)
-    truck(b, 19.5, -11.5, rot=math.pi / 2)
-    for i in range(7):  # fila scooter a sinistra
-        scooter(b, -24.5, -9.0 + i * 1.5, rot=0.1 * (i % 3 - 1))
-    pallet_stack(b, -8.5, -8.5, rot=0.3)
-    pallet_stack(b, -6.5, -9.3, rot=-0.2, n=2)
-    dumpster(b, -3.5, -9.0, rot=0.15)
+    # ============ PIAZZALE
+    for i in range(5):                                     # stalli dipinti
+        b.box(2.0 + i * 3.0, -13.5, 0.33, 0.14, 5.6, 0.04)
+    car(b, 14.8, -7.6, rot=math.pi / 2)                    # SUV vicino agli uffici
+    car(b, 9.6, -12.6, rot=math.pi / 2)
+    truck(b, 22.8, -13.5, rot=math.pi / 2)
+    for i in range(8):                                     # fila scooter fronte-sinistra
+        scooter(b, -25.0 + i * 1.55, -18.6, rot=math.pi / 2 + 0.1 * (i % 3 - 1))
+    dumpster(b, -5.5, -8.6, rot=0.15)
+    pallet_stack(b, -8.0, -8.2, rot=0.4, n=2)
 
-    # ---- ingresso: pilastri cancello, siepi in fioriera, alberi
-    for sx in (-1, 1):
-        b.box(sx * 8.0, -hd + 0.6, 1.0, 1.4, 1.4, 2.0)   # pilastri
-        b.box(sx * 16.0, -hd + 0.9, 0.6, 14, 0.5, 1.2)   # muretto
-    hedge(b, 4.0, -hd + 2.4, 7, rot=0)
-    hedge(b, -4.5, -hd + 2.4, 6, rot=0)
-    for x in (-2.0, 2.0):
-        planter(b, x, -7.2)
-    # verde perimetrale
-    for x in (-24, -17, 17, 24):
-        tree(b, x, hd - 3.0, scale=1.0, lollipop=False)
-    for y in (-2, 6, 14):
-        tree(b, hw - 3.0, y, scale=0.9, lollipop=False)
-    tree(b, -hw + 3.0, -4, scale=1.1, lollipop=False)
-    # logo sul volume nero
-    return (7.0, -4.6 - 1.68 - 0.18, 5.2, 3.2)
+    # ============ CONFINE: muretto basso + varchi, siepi, verde
+    b.box(-15.5, -hd + 0.2, 0.75, 25, 0.4, 1.5)            # muretto sx
+    b.box(14.5, -hd + 0.2, 0.75, 7, 0.4, 1.5)              # muretto tra i varchi
+    fence(b, -hw + 0.2, 0, plaza_d * 0.86, rot=math.pi / 2, h=1.7)
+    fence(b, hw - 0.2, 6, plaza_d * 0.6, rot=math.pi / 2, h=1.7)
+    fence(b, 0, hd - 0.2, plaza_w * 0.92, rot=0, h=1.7)
+    # siepi tonde in fioriera ai lati dell'ingresso vetrato
+    for x, y in ((0.2, -6.2), (10.0, -6.2)):
+        b.box(x, y, 0.5, 2.6, 1.3, 0.5)
+        bush(b, x - 0.5, y, r=0.95)
+        bush(b, x + 0.6, y + 0.1, r=0.8)
+    planter(b, 12.2, -6.0, scale=0.55)
+    # cespugli lungo il fronte sinistro + grande albero d'angolo
+    for i in range(5):
+        bush(b, -26.5 + i * 2.1, -20.2, r=1.05)
+    tree(b, -25.5, -16.0, scale=1.35, lollipop=False)
+    # alberi dietro il muro destro e sul retro
+    for y in (0, 7):
+        tree(b, hw - 2.2, y, scale=0.95, lollipop=False)
+    for x in (-22, -14, 8, 16, 24):
+        tree(b, x, hd - 2.6, scale=1.0, lollipop=False)
+    # logo sul pannello insegna del volume nero
+    return (5.5, -5.14 - 0.08, 5.95, 2.9)
 
 
 def build_fratelli():
@@ -600,7 +676,7 @@ def asian_tower(b, x, y, w, d, h, rnd, dense=True):
 def block_towers(b, cx, cy, seed, half=14.8):
     rnd = random.Random(seed)
     dense = VERSION == 2
-    n = rnd.randint(4, 6) if dense else rnd.randint(2, 4)
+    n = rnd.randint(5, 7) if dense else rnd.randint(2, 4)
     placed = []
     for i in range(n):
         w = rnd.uniform(5.5, 8.5)
@@ -617,7 +693,7 @@ def block_towers(b, cx, cy, seed, half=14.8):
         asian_tower(b, x, y, w, d, h, rnd, dense=dense)
     if dense:
         # infill basso tra le torri + verde
-        for i in range(rnd.randint(1, 2)):
+        for i in range(rnd.randint(2, 3)):
             x = cx + rnd.uniform(-half + 4, half - 4)
             y = cy + rnd.uniform(-half + 4, half - 4)
             w, d, h = rnd.uniform(4, 6), rnd.uniform(3, 5), rnd.uniform(3, 4.5)
@@ -631,7 +707,7 @@ def block_towers(b, cx, cy, seed, half=14.8):
 
 def block_lowrise(b, cx, cy, seed, half=14.5):
     rnd = random.Random(seed)
-    n = rnd.randint(3, 4) if VERSION == 2 else rnd.randint(2, 3)
+    n = rnd.randint(4, 5) if VERSION == 2 else rnd.randint(2, 3)
     for i in range(n):
         x = cx + rnd.uniform(-half + 6, half - 6)
         y = cy + rnd.uniform(-half + 6, half - 6)
