@@ -74,6 +74,26 @@ export const STYLES = {
       Clouds: '#f0e5d0',
     },
   },
+  Sabbia: {
+    background: '#f5f0f0',
+    outline: '#1e1e28',
+    shadow: '#ede5db',
+    shadowOpacity: 0.75,
+    ambientColor: '#675f4f',
+    ambientIntensity: 1.26,
+    directionalIntensity: 2.0,
+    sunAzimuth: 0.82,
+    sunElevation: 0.82,
+    emissive: '#efefef',
+    emissiveIntensity: 0.75,
+    groups: {
+      Fratelli_HQ: '#ffffff',
+      City: '#cdb59a',
+      Roads: '#7e6846',
+      Poles: '#1e1e28',
+      Clouds: '#e8e8e6',
+    },
+  },
   Fratelli: {
     background: '#f7f4f1',
     outline: '#e30613',
@@ -103,6 +123,14 @@ export function applyStyle(preset, ctx) {
   ctx.ambientLight.color.set(preset.ambientColor);
   ctx.ambientLight.intensity = preset.ambientIntensity;
   ctx.directionalLight.intensity = preset.directionalIntensity;
+  if (preset.sunAzimuth !== undefined) {
+    const R = 115;
+    ctx.directionalLight.position.set(
+      R * Math.cos(preset.sunElevation) * Math.cos(preset.sunAzimuth),
+      R * Math.sin(preset.sunElevation),
+      R * Math.cos(preset.sunElevation) * Math.sin(preset.sunAzimuth),
+    );
+  }
   for (const name of GROUPS) {
     const m = groupMaterials[name];
     m.color.set(preset.groups[name]);
