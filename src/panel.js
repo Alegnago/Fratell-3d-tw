@@ -23,6 +23,8 @@ export function initPanel(ctx) {
     ambientColore: '#f1e9d9',
     ambientIntensita: 2.2,
     soleIntensita: 1.6,
+    soleAzimut: -0.59,
+    soleAltezza: 0.9,
     gruppi: {},
   };
   for (const g of GROUPS) state.gruppi[g] = '#d8d8d8';
@@ -62,7 +64,22 @@ export function initPanel(ctx) {
     });
   }
 
+  const setSun = () => {
+    const R = 115;
+    const az = state.soleAzimut;
+    const el = state.soleAltezza;
+    ctx.directionalLight.position.set(
+      R * Math.cos(el) * Math.cos(az),
+      R * Math.sin(el),
+      R * Math.cos(el) * Math.sin(az),
+    );
+  };
+
   const fl = pane.addFolder({ title: 'Luci', expanded: false });
+  fl.addBinding(state, 'soleAzimut', { label: 'Sole rotazione', min: -Math.PI, max: Math.PI })
+    .on('change', setSun);
+  fl.addBinding(state, 'soleAltezza', { label: 'Sole altezza', min: 0.25, max: 1.45 })
+    .on('change', setSun);
   fl.addBinding(state, 'ambientColore', { label: 'Ambiente' }).on('change', (ev) => ctx.ambientLight.color.set(ev.value));
   fl.addBinding(state, 'ambientIntensita', { label: 'Ambiente int.', min: 0, max: 4 }).on('change', (ev) => {
     ctx.ambientLight.intensity = ev.value;
@@ -79,6 +96,10 @@ export function initPanel(ctx) {
     state.ambientColore = '#' + ctx.ambientLight.color.getHexString();
     state.ambientIntensita = ctx.ambientLight.intensity;
     state.soleIntensita = ctx.directionalLight.intensity;
+    const p = ctx.directionalLight.position;
+    const horiz = Math.hypot(p.x, p.z);
+    state.soleAzimut = Math.atan2(p.z, p.x);
+    state.soleAltezza = Math.atan2(p.y, horiz);
     for (const g of GROUPS) state.gruppi[g] = '#' + groupMaterials[g].color.getHexString();
   }
 
