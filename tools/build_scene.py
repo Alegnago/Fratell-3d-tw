@@ -622,6 +622,26 @@ def build_hq_v2(b):
         lamp_post(b, 16.5, -17.5)
         hydrant(b, 24.6, -17.8)
 
+        # ---- verde nelle zone vuote del piazzale (cerchi rossi utente)
+        grnd = random.Random(9)
+        # terrazza verde sul tetto uffici
+        roof_garden(b, 2.5, 1.5, 9.35, 9, 7, grnd)
+        # retro: prato + alberi + cespugli dietro il capannone
+        lawn_patch(b, 0, 20.3, 44, 3.0)
+        for x in range(-19, 20, 6):
+            bush(b, x + grnd.uniform(-0.8, 0.8), 20.3 + grnd.uniform(-0.6, 0.6),
+                 r=grnd.uniform(0.55, 0.9))
+        tree(b, -6, 20.2, scale=0.85, lollipop=False)
+        tree(b, 12, 20.4, scale=0.9, lollipop=True)
+        # angolo giardino fronte-destra (zona vuota tra stalli e muro)
+        lawn_patch(b, 25.6, -13.5, 4.0, 9, rot=0)
+        tree(b, 25.6, -11.0, scale=0.8, lollipop=True)
+        bush(b, 23.5, -15.5, r=0.8)
+        bush(b, 25.8, -14.2, r=0.65)
+        # fascia cespugli lungo il muro sinistro
+        for y in range(-14, 15, 5):
+            bush(b, -26.6, y + grnd.uniform(-0.8, 0.8), r=grnd.uniform(0.5, 0.85))
+
     # logo sul pannello insegna del volume nero
     return (5.5, -5.14 - 0.08, 5.95, 2.9)
 
@@ -679,6 +699,9 @@ def block_factory(b, cx, cy, rot):
     px, py = at(-12, 6)
     water_tank(b, px, py, 0)
     fence_block(b, cx, cy, rot, 15 if VERSION == 1 else 13)
+    if VERSION >= 3:
+        # cortile fabbrica: verde lungo l'anello interno della recinzione
+        yard_green(b, cx, cy, 12, random.Random(int(cx * 7 + cy * 13)), n_trees=5, n_bushes=7)
 
 
 def asian_tower(b, x, y, w, d, h, rnd, dense=True):
@@ -860,6 +883,38 @@ def green_strip(b, x0, x1, y0, y1, seed):
         bush(b, gx, gy, r=rnd.uniform(0.5, 0.9))
 
 
+def lawn_patch(b, x, y, w, d, rot=0.0):
+    b.box(x, y, 0.05, w, d, 0.1, rot)
+
+
+def roof_garden(b, x, y, z, w, d, rnd):
+    # terrazza verde: fioriere con siepi e chiome basse
+    for i in range(rnd.randint(4, 6)):
+        gx = x + rnd.uniform(-w / 2 + 1, w / 2 - 1)
+        gy = y + rnd.uniform(-d / 2 + 1, d / 2 - 1)
+        b.box(gx, gy, z + 0.3, 1.4, 1.4, 0.6)
+        b.sphere(gx, gy, z + 1.1, rnd.uniform(0.7, 1.0), sub=2, squash=0.7)
+    b.box(x, y - d / 2 + 0.5, z + 0.25, w - 1, 0.9, 0.5)   # fioriera lunga sul bordo
+    for i in range(int(w / 1.6)):
+        b.sphere(x - w / 2 + 0.5 + i * 1.6, y - d / 2 + 0.5, z + 0.75, 0.55, sub=2, squash=0.7)
+
+
+def yard_green(b, cx, cy, half, rnd, n_trees=5, n_bushes=6):
+    # riempie il cortile vuoto lungo l'anello interno alla recinzione
+    for i in range(n_trees):
+        ang = rnd.uniform(0, 2 * math.pi)
+        rad = rnd.uniform(half - 4.5, half - 2.0)
+        tree(b, cx + rad * math.cos(ang), cy + rad * math.sin(ang),
+             scale=rnd.uniform(0.55, 0.9), lollipop=rnd.random() < 0.5)
+    for i in range(n_bushes):
+        ang = rnd.uniform(0, 2 * math.pi)
+        rad = rnd.uniform(half - 5.0, half - 1.5)
+        bush(b, cx + rad * math.cos(ang), cy + rad * math.sin(ang), r=rnd.uniform(0.5, 0.9))
+    for i in range(2):
+        lawn_patch(b, cx + rnd.uniform(-half / 2, half / 2), cy + rnd.uniform(-half / 2, half / 2),
+                   rnd.uniform(3, 5), rnd.uniform(3, 5), rot=rnd.uniform(0, math.pi))
+
+
 def parcel_house(b, x, y, rnd, lot=11.0):
     # proprietà privata: casetta + giardino + auto nel vialetto
     rot = rnd.choice([0, math.pi / 2])
@@ -926,8 +981,10 @@ def parcel_garden(b, x, y, rnd, lot=11.0):
 def parcel_greens(b, lx, ly, rnd, lot=11.0):
     # verde di riempimento dove l'edificio non occupa tutto il lotto:
     # alberi e cespugli lungo i bordi, fuori dall'impronta centrale
-    # (in v3 il verde grosso sta nelle fasce stradali: qui solo un tocco)
-    for i in range(rnd.randint(1, 2) if VERSION >= 3 else rnd.randint(2, 3)):
+    if VERSION >= 3:
+        lawn_patch(b, lx + rnd.uniform(-lot / 4, lot / 4), ly + rnd.uniform(-lot / 4, lot / 4),
+                   rnd.uniform(2.5, 4), rnd.uniform(2.5, 4), rot=rnd.uniform(0, math.pi))
+    for i in range(rnd.randint(2, 3)):
         ang = rnd.uniform(0, 2 * math.pi)
         rad = rnd.uniform(lot * 0.40, lot * 0.48)
         gx, gy = lx + rad * math.cos(ang), ly + rad * math.sin(ang)
@@ -962,9 +1019,11 @@ def block_parcels(b, cx, cy, seed, half=13.0):
     # angoli dell'isolato: alberi dove i lotti non arrivano
     for sx in (-1, 1):
         for sy in (-1, 1):
-            if rnd.random() < 0.5:
+            if VERSION >= 3 or rnd.random() < 0.5:
                 tree(b, cx + sx * (half - 1.6), cy + sy * (half - 1.6),
                      scale=rnd.uniform(0.5, 0.8), lollipop=rnd.random() < 0.5)
+                if VERSION >= 3:
+                    bush(b, cx + sx * (half - 3.2), cy + sy * (half - 2.0), r=rnd.uniform(0.5, 0.8))
 
 
 def block_shops(b, cx, cy, seed, half=13.0):
