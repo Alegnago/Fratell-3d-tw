@@ -10,7 +10,14 @@ import {
 } from 'three';
 import { ConditionalEdgesShader } from './ConditionalEdgesShader.js';
 
-export const GROUPS = ['Fratelli_HQ', 'City', 'Roads', 'Poles', 'Clouds'];
+// v1-v3: 5 mega-mesh. v4: categorie granulari (istanze) — ogni voce ha
+// il suo materiale e color picker; i preset senza colore specifico per
+// una categoria ricadono su City (vedi styles.js).
+export const GROUPS = [
+  'Fratelli_HQ', 'City', 'Roads', 'Poles', 'Clouds',
+  'Towers', 'Houses', 'Workshops', 'Trees', 'Bushes', 'Fences',
+  'Cars', 'Trucks', 'Scooters', 'Stalls', 'Planters', 'Lamps', 'WaterTanks',
+];
 
 // un lambert per gruppo: i color picker agiscono sul singolo gruppo
 export const groupMaterials = {};

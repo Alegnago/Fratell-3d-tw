@@ -19,10 +19,11 @@ import { initPanel } from './panel.js';
 import modelV1Url from '../assets/fratelli_city.glb?url';
 import modelV2Url from '../assets/fratelli_city_v2.glb?url';
 import modelV3Url from '../assets/fratelli_city_v3.glb?url';
+import modelV4Url from '../assets/fratelli_city_v4.glb?url';
 import logoUrl from '../assets/logo.svg?url';
 
-const MODELS = { v1: modelV1Url, v2: modelV2Url, v3: modelV3Url };
-const DEFAULT_MODEL = 'v3';
+const MODELS = { v1: modelV1Url, v2: modelV2Url, v3: modelV3Url, v4: modelV4Url };
+const DEFAULT_MODEL = 'v4';
 
 const app = document.getElementById('app');
 const dpr = Math.min(window.devicePixelRatio, 2);
@@ -99,8 +100,9 @@ function setModel(key) {
     return;
   }
   loader.load(MODELS[key], async (gltf) => {
-    const root = gltf.scene;
-    applyInkStyle(root, { skipNames: ['Logo'] });
+    // applyInkStyle "cuoce" istanze e gruppi in poche mesh: si aggiunge
+    // il Group ritornato, non gltf.scene
+    const root = applyInkStyle(gltf.scene, { skipNames: ['Logo'] });
     await logoReady;
     const logo = root.getObjectByName('Logo');
     if (logo) logo.material = logoMaterial;

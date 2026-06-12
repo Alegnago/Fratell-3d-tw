@@ -133,7 +133,8 @@ export function applyStyle(preset, ctx) {
   }
   for (const name of GROUPS) {
     const m = groupMaterials[name];
-    m.color.set(preset.groups[name]);
+    // categorie nuove (v4) senza colore nel preset -> colore City
+    m.color.set(preset.groups[name] ?? preset.groups.City);
     m.emissive.set(preset.emissive);
     m.emissiveIntensity = preset.emissiveIntensity;
   }

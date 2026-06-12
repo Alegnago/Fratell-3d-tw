@@ -9,6 +9,19 @@ const GROUP_LABELS = {
   Roads: 'Strade',
   Poles: 'Pali e cavi',
   Clouds: 'Nuvole',
+  Towers: 'Torri',
+  Houses: 'Case',
+  Workshops: 'Officine',
+  Trees: 'Alberi',
+  Bushes: 'Cespugli',
+  Fences: 'Recinzioni',
+  Cars: 'Auto',
+  Trucks: 'Camion',
+  Scooters: 'Scooter',
+  Stalls: 'Bancarelle',
+  Planters: 'Fioriere',
+  Lamps: 'Lampioni',
+  WaterTanks: 'Serbatoi',
 };
 
 // ctx: { scene, ambientLight, directionalLight, setModel, currentModel }
@@ -47,7 +60,7 @@ export function initPanel(ctx) {
   pane
     .addBinding(state, 'modello', {
       label: 'Modello',
-      options: { 'v3 — contesto': 'v3', 'v2 — denso': 'v2', 'v1 — classico': 'v1' },
+      options: { 'v4 — instanced': 'v4', 'v3 — contesto': 'v3', 'v2 — denso': 'v2', 'v1 — classico': 'v1' },
     })
     .on('change', (ev) => ctx.setModel(ev.value));
 

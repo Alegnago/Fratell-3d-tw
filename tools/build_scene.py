@@ -7,7 +7,7 @@ import random
 import os
 import sys
 
-VERSION = 3
+VERSION = 4
 if '--' in sys.argv:
     args = sys.argv[sys.argv.index('--') + 1:]
     if '--version' in args:
@@ -19,7 +19,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ASSETS = os.path.join(ROOT, "assets")
 os.makedirs(ASSETS, exist_ok=True)
 
-SUFFIX = {1: "", 2: "_v2", 3: "_v3"}[VERSION]
+SUFFIX = {1: "", 2: "_v2", 3: "_v3", 4: "_v4"}[VERSION]
 
 # ---------------------------------------------------------------- scene reset
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -125,13 +125,44 @@ class Builder:
         self._emit(vs, fs)
 
     def to_object(self, name):
+        ob = bpy.data.objects.new(name, self.to_mesh(name))
+        col.objects.link(ob)
+        return ob
+
+    def to_mesh(self, name):
         me = bpy.data.meshes.new(name)
         me.from_pydata(self.verts, [], self.faces)
         me.validate()
         me.update()
-        ob = bpy.data.objects.new(name, me)
-        col.objects.link(ob)
-        return ob
+        return me
+
+
+# ------------------------------------------------- libreria istanze (v4)
+# Ogni asset = un solo datablock mesh; le istanze sono oggetti che lo
+# condividono. L'exporter GLTF scrive la mesh una volta sola.
+LIB = {}
+
+
+def lib_asset(key, build_fn):
+    lb = Builder()
+    build_fn(lb)
+    LIB[key] = lb.to_mesh(key)
+
+
+def place(cat, key, x, y, rot=0.0, scale=1.0, z=0.0):
+    # il nome oggetto = categoria: il loader risolve il gruppo materiale
+    # dal nome (Blender appende .001, .002... -> strip lato js)
+    ob = bpy.data.objects.new(cat, LIB[key])
+    ob.location = (x, y, z)
+    ob.rotation_euler = (0.0, 0.0, rot)
+    ob.scale = (scale, scale, scale)
+    col.objects.link(ob)
+    return ob
+
+
+def _rot_jitter(x, y):
+    # rotazione pseudo-casuale ma deterministica dalla posizione
+    return (x * 7.31 + y * 13.77) % (2 * math.pi)
 
 
 # ---------------------------------------------------------------- componenti
@@ -1237,12 +1268,144 @@ def build_city_v2():
             pb.tube((x, -34.6, 7 + dz), (x, -25.6, 6.6 + dz), r=0.022, seg=3)
     pb.to_object("Poles")
 
-    cb = Builder()
-    for (x, y, z, s) in ((-38, 26, 27, 1.0), (30, -34, 31, 1.3), (55, 36, 25, 0.8), (-60, -20, 29, 0.9)):
-        cb.sphere(x, y, z, 3.2 * s, sub=2, squash=0.45)
-        cb.sphere(x + 2.6 * s, y + 0.6 * s, z - 0.3, 2.2 * s, sub=2, squash=0.5)
-        cb.sphere(x - 2.8 * s, y - 0.4 * s, z - 0.4, 2.0 * s, sub=2, squash=0.5)
-    cb.to_object("Clouds")
+    if VERSION >= 4:
+        for (x, y, z, s) in ((-38, 26, 27, 1.0), (30, -34, 31, 1.3), (55, 36, 25, 0.8), (-60, -20, 29, 0.9)):
+            place('Clouds', 'cloud', x, y, z=z, scale=s, rot=_rot_jitter(x, y))
+    else:
+        cb = Builder()
+        for (x, y, z, s) in ((-38, 26, 27, 1.0), (30, -34, 31, 1.3), (55, 36, 25, 0.8), (-60, -20, 29, 0.9)):
+            cb.sphere(x, y, z, 3.2 * s, sub=2, squash=0.45)
+            cb.sphere(x + 2.6 * s, y + 0.6 * s, z - 0.3, 2.2 * s, sub=2, squash=0.5)
+            cb.sphere(x - 2.8 * s, y - 0.4 * s, z - 0.4, 2.0 * s, sub=2, squash=0.5)
+        cb.to_object("Clouds")
+
+
+# ------------------------------------------------- v4: libreria + rebind
+# Pochi asset unici, tante istanze: i componenti ripetuti vengono
+# ridefiniti come placer di istanze; il layout (build_city_v2, HQ)
+# resta lo stesso codice della v3 e chiama i nomi globali, quindi
+# prende automaticamente le versioni istanziate.
+def lib_house(b, w, d, h, with_antenna):
+    b.box(0, 0, h / 2, w, d, h)
+    b.gable(0, 0, h, w * 1.08, d * 1.14, 1.55, 0)
+    windows_grid(b, 0, -(d / 2 + 0.03), 1.6, 1.0, 1.1, 2, 1, axis='y', gap_x=1.2)
+    if with_antenna:
+        antenna(b, 1.0, 0, h + 1.4, h=1.6)
+
+
+def lib_workshop(b):
+    w, d, h = 7.2, 6.0, 4.0
+    b.box(0, 0, h / 2, w, d, h)
+    b.prism(0, 0, h, w * 1.06, d * 1.1, 1.0)
+    roller_shutter(b, 0, -d / 2 - 0.06, 0.15, 3.2, h - 1.4)
+    chimney(b, w / 4, d / 4, h + 2.0, r=0.25)
+
+
+def lib_cloud(b):
+    b.sphere(0, 0, 0, 3.2, sub=2, squash=0.45)
+    b.sphere(2.6, 0.6, -0.3, 2.2, sub=2, squash=0.5)
+    b.sphere(-2.8, -0.4, -0.4, 2.0, sub=2, squash=0.5)
+
+
+def build_library():
+    lib_asset('tree_a', lambda b: tree(b, 0, 0, scale=1.0, lollipop=False))
+    lib_asset('tree_b', lambda b: tree(b, 0, 0, scale=1.0, lollipop=True))
+    lib_asset('bush', lambda b: bush(b, 0, 0, r=1.0))
+    lib_asset('car', lambda b: car(b, 0, 0))
+    lib_asset('truck', lambda b: truck(b, 0, 0))
+    lib_asset('scooter', lambda b: scooter(b, 0, 0))
+    lib_asset('stall', lambda b: stall(b, 0, 0))
+    lib_asset('planter', lambda b: planter(b, 0, 0))
+    lib_asset('power_pole', lambda b: power_pole(b, 0, 0))
+    lib_asset('lamp_post', lambda b: lamp_post(b, 0, 0))
+    lib_asset('water_tank', lambda b: water_tank(b, 0, 0, 0))
+    lib_asset('fence6', lambda b: fence(b, 0, 0, 6.0))
+    r1, r2 = random.Random(101), random.Random(202)
+    lib_asset('tower_a', lambda b: asian_tower(b, 0, 0, 6.4, 6.2, 15.0, r1, dense=True))
+    lib_asset('tower_b', lambda b: asian_tower(b, 0, 0, 5.8, 6.0, 21.0, r2, dense=True))
+    lib_asset('house_a', lambda b: lib_house(b, 6.4, 5.0, 3.4, True))
+    lib_asset('house_b', lambda b: lib_house(b, 7.0, 5.4, 3.8, False))
+    lib_asset('workshop', lambda b: lib_workshop(b))
+    lib_asset('cloud', lambda b: lib_cloud(b))
+
+
+if VERSION >= 4:
+    build_library()
+
+    def tree(b, x, y, scale=1.0, lollipop=True):
+        place('Trees', 'tree_b' if lollipop else 'tree_a', x, y,
+              rot=_rot_jitter(x, y), scale=scale)
+
+    def bush(b, x, y, r=1.0):
+        place('Bushes', 'bush', x, y, rot=_rot_jitter(x, y), scale=r)
+
+    def car(b, x, y, rot=0.0):
+        place('Cars', 'car', x, y, rot=rot)
+
+    def truck(b, x, y, rot=0.0):
+        place('Trucks', 'truck', x, y, rot=rot)
+
+    def scooter(b, x, y, rot=0.0):
+        place('Scooters', 'scooter', x, y, rot=rot)
+
+    def stall(b, x, y, rot=0.0):
+        place('Stalls', 'stall', x, y, rot=rot)
+
+    def planter(b, x, y, scale=0.6):
+        place('Planters', 'planter', x, y, rot=_rot_jitter(x, y))
+
+    def power_pole(b, x, y, h=7.0):
+        place('Poles', 'power_pole', x, y)
+
+    def lamp_post(b, x, y, h=5.5):
+        place('Lamps', 'lamp_post', x, y, rot=_rot_jitter(x, y))
+
+    def water_tank(b, x, y, z):
+        place('WaterTanks', 'water_tank', x, y, z=z, rot=_rot_jitter(x, y))
+
+    def fence(b, x, y, length, rot=0.0, h=2.2):
+        # sezioni da ~6m scalate uniformemente (delta altezza trascurabile)
+        n = max(1, round(length / 6.0))
+        sec = length / n
+        c, s = math.cos(rot), math.sin(rot)
+        for i in range(n):
+            o = -length / 2 + (i + 0.5) * sec
+            place('Fences', 'fence6', x + o * c, y + o * s, rot=rot, scale=sec / 6.0)
+
+    def asian_tower(b, x, y, w, d, h, rnd, dense=True):
+        key = 'tower_a' if rnd.random() < 0.55 else 'tower_b'
+        base_h = 15.0 if key == 'tower_a' else 21.0
+        scale = max(0.75, min(1.35, h / base_h))
+        place('Towers', key, x, y,
+              rot=rnd.choice([0, math.pi / 2, math.pi, -math.pi / 2]), scale=scale)
+
+    def parcel_house(b, x, y, rnd, lot=11.0):
+        rot = rnd.choice([0, math.pi / 2])
+        hx = x + rnd.uniform(-1.2, 1.2)
+        hy = y + rnd.uniform(-1.2, 1.2)
+        key = 'house_a' if rnd.random() < 0.5 else 'house_b'
+        scale = rnd.uniform(0.9, 1.1)
+        place('Houses', key, hx, hy, rot=rot, scale=scale)
+        if rnd.random() < 0.4:
+            h_eff = (3.4 if key == 'house_a' else 3.8) * scale
+            water_tank(b, hx - 1.5, hy + 1.2, h_eff + 1.0)
+        tree(b, x + rnd.uniform(2.5, 4.2) * rnd.choice([-1, 1]), y + rnd.uniform(2.5, 4.2),
+             scale=rnd.uniform(0.55, 0.85), lollipop=rnd.random() < 0.6)
+        for i in range(rnd.randint(1, 3)):
+            bush(b, x + rnd.uniform(-4.2, 4.2), y + rnd.uniform(-4.2, 4.2), r=rnd.uniform(0.5, 0.85))
+        hedge(b, x, y - lot / 2 + 0.7, lot * 0.55, rot=0, h=0.7)
+        car(b, x + rnd.uniform(2.6, 3.6) * rnd.choice([-1, 1]), y - rnd.uniform(2.4, 3.6),
+            rot=rot + rnd.uniform(-0.1, 0.1))
+        if rnd.random() < 0.4:
+            scooter(b, x - 2.0, y - 1.5, rot=rnd.uniform(0, math.pi))
+
+    def parcel_workshop(b, x, y, rnd):
+        place('Workshops', 'workshop', x, y, scale=rnd.uniform(0.95, 1.12))
+        pallet_stack(b, x + 4.6, y - 1.0, rot=rnd.uniform(0, 0.5), n=rnd.randint(1, 3))
+        if rnd.random() < 0.6:
+            truck(b, x - 5.9, y - 0.5, rot=math.pi / 2)
+        else:
+            car(b, x - 5.4, y - 0.5, rot=math.pi / 2)
 
 
 # ---------------------------------------------------------------- build + export
@@ -1252,7 +1415,11 @@ if VERSION == 1:
 else:
     build_city_v2()
 
+_done = set()
 for ob in col.objects:
+    if ob.type != 'MESH' or ob.data.name in _done:
+        continue  # le istanze v4 condividono la mesh: recalc una volta sola
+    _done.add(ob.data.name)
     bm = bmesh.new()
     bm.from_mesh(ob.data)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
