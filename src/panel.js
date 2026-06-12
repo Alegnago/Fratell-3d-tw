@@ -14,7 +14,7 @@ const GROUP_LABELS = {
 // ctx: { scene, ambientLight, directionalLight, setModel, currentModel }
 export function initPanel(ctx) {
   const state = {
-    stile: 'Crema',
+    stile: 'Sabbia',
     modello: ctx.currentModel,
     sfondo: '#f5f5f3',
     outline: '#161616',

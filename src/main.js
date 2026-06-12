@@ -119,7 +119,7 @@ const ctx = {
     return currentModel;
   },
 };
-applyStyle(STYLES.Crema, ctx);
+applyStyle(STYLES.Sabbia, ctx);
 initPanel(ctx);
 
 window.__rig = rig;
