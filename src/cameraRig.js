@@ -7,9 +7,18 @@ const EASE = 0.04;
 const RESUME_DELAY = 2.0;      // s senza input prima di riprendere l'auto-orbita
 
 export class CameraRig {
-  constructor(dom, { radius = 120, elevation = 0.62, target = new Vector3(0, 4, 0) } = {}) {
-    this.camera = new PerspectiveCamera(26, 1, 1, 800);
+  constructor(dom, {
+    radius = 120,
+    elevation = 0.62,
+    target = new Vector3(0, 4, 0),
+    // raggio della sfera che racchiude la fabbrica: ciò che deve restare
+    // sempre inquadrato (metodo Bruno Simon: fit della bounding sphere).
+    frameRadius = 30,
+  } = {}) {
+    this.camera = new PerspectiveCamera(26, 1, 1, 1200);
     this.dom = dom;
+    this.baseRadius = radius;  // inquadratura desktop, invariata
+    this.frameRadius = frameRadius;
     this.radius = radius;
     this.elevation = elevation;
     this.target = target;
@@ -59,7 +68,18 @@ export class CameraRig {
   }
 
   resize(w, h) {
-    this.camera.aspect = w / h;
+    const aspect = w / h;
+    this.camera.aspect = aspect;
     this.camera.updateProjectionMatrix();
+
+    // distanza che mantiene la bounding sphere (frameRadius) dentro al
+    // frustum orizzontale, dato il FOV verticale fisso:
+    //   fovH = 2·atan(tan(fovV/2)·aspect)   ->   d = R / sin(fovH/2)
+    // Su desktop vince baseRadius; su schermi stretti (portrait mobile)
+    // il vincolo orizzontale spinge la camera indietro -> fabbrica intera.
+    const fovVHalf = (this.camera.fov * Math.PI) / 360;
+    const fovHHalf = Math.atan(Math.tan(fovVHalf) * aspect);
+    const fitH = this.frameRadius / Math.sin(fovHHalf);
+    this.radius = Math.max(this.baseRadius, fitH);
   }
 }
