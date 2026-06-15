@@ -26,12 +26,15 @@ const MODELS = { v1: modelV1Url, v2: modelV2Url, v3: modelV3Url, v4: modelV4Url 
 const DEFAULT_MODEL = 'v4';
 
 const app = document.getElementById('app');
-const dpr = Math.min(window.devicePixelRatio, 2);
+// su mobile il DPR alto rende le linee 1px sottili ma SENZA antialias
+// appaiono dure/scalettate (sembrano piu' spesse). AA sempre attivo +
+// DPR fino a 3: linee piu' nitide e morbide quando la camera arretra.
+const dpr = Math.min(window.devicePixelRatio, 3);
 
 const renderer = new WebGLRenderer({
   precision: 'highp',
   powerPreference: 'high-performance',
-  antialias: dpr < 2,
+  antialias: true,
   stencil: false,
   alpha: true,
 });
